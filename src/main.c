@@ -20,28 +20,46 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 #include "todo.h"
 
 
+#ifdef _WIN32
+#define TODO_FILE_PATH "./TODOS.bin"
+
+#else
+#define TODO_FILE_PATH "/usr/local/share/TODOS.bin"
+
+#endif
+
 /*
 Closes a todo file and frees up memory allocated to store todos, basically
 a clean up function.
 */
-void clean_up(FILE* todo_file, Todo** todos, size_t todo_count, char* todo_file_path) {
-    fclose(todo_file);
+void clean_up(FILE* todo_file, Todo** todos, size_t todo_count) {
+    if (todo_file) {
+        fclose(todo_file);
+    }
+
+    if (!todos) {
+        return;
+    }
+
     for (size_t i = 0; i < todo_count; i++) {
         todo_delete(&todos[i]);
-    }
-    free(todo_file_path);
+    }    
 }
 
 
 /*
 Opens a TODO file for reading and writing at todo_file_path. If an error occurs - creates a new 
-file instead.
+file instead. If provided todo_file points to an already opened file - closes it.
 
 Returns EXIT_FAILURE if creating a new file happens to be unsuccessful or one of the arguments are NULL.
 */
 int open_todo_file(const char* todo_file_path, FILE** todo_file) {
     if (!todo_file_path || !todo_file) {
         return EXIT_FAILURE;
+    }
+
+    if (*todo_file) {
+        fclose(*todo_file);
     }
 
     *todo_file = fopen(todo_file_path, "r+");
@@ -63,11 +81,7 @@ int open_todo_file(const char* todo_file_path, FILE** todo_file) {
 
 
 int main(int argc, char** argv) {
-    char* todo_file_name = "TODOS.bin";
-    char* todo_file_dir_path = "./";
-    char* todo_file_path = malloc(sizeof(char) * (strlen(todo_file_dir_path)+strlen(todo_file_name)+1));
-    todo_file_path = strcat(todo_file_path, todo_file_dir_path);
-    todo_file_path = strcat(todo_file_path, todo_file_name);
+    char* todo_file_path = TODO_FILE_PATH;
     size_t todo_count = 0;
     Todo** todos = NULL;
     char* arg = NULL;
@@ -75,16 +89,12 @@ int main(int argc, char** argv) {
     int i = 0;
 
 
-    // Open TODO file
-    open_todo_file(todo_file_path, &todo_file);
-
-
     if (argc < 2) {
         printf(
             "A command is required!\
             \nRun clido help to look at usage overview\n"
         );
-        clean_up(todo_file, todos, todo_count, todo_file_path);
+        clean_up(todo_file, todos, todo_count);
         return EXIT_FAILURE;
     }
 
@@ -105,23 +115,52 @@ int main(int argc, char** argv) {
                 \nshow -> Outputs current TODOs\
                 \nshow-done -> Outputs TODOs which were done previously\
                 \ndone [index]... -> Marks specified TODO(s) as done\
+                \ntodo-path [path] -> Specifies another path pointing to the todo file\
+                \n\nExamples:\
+                \nclido add Do the cooking today\
+                \nclido add Read a book\
+                \nclido show\
+                \nclido done 0 1\
+                \nclido show-done\
                 \n"
             );
-            clean_up(todo_file, todos, todo_count, todo_file_path);
+            clean_up(todo_file, todos, todo_count);
             return EXIT_SUCCESS;
+        }
+
+        // Todo-path command
+        if (strcmp(arg, "todo-path") == 0) {
+            i++;
+            if (i >= argc) {
+                fprintf(stderr, "No path was provided!\n");
+                clean_up(todo_file, todos, todo_count);
+                return EXIT_FAILURE;
+            }
+
+            // Try to open the specified one
+            todo_file_path = argv[i];
+            if (open_todo_file(todo_file_path, &todo_file) == EXIT_FAILURE) {
+                return EXIT_FAILURE;
+            }
         }
 
 
         // Add command
         if (strcmp(arg, "add") == 0) {
+            // Open|Create|Reopen TODO file
+            if (open_todo_file(todo_file_path, &todo_file) == EXIT_FAILURE) {
+                return EXIT_FAILURE;
+            }
+
             i++;
-            arg = argv[i];
             if (i >= argc) {
                 // No actual text was given
                 fprintf(stderr, "No TODO text was given!\n");
-                clean_up(todo_file, todos, todo_count, todo_file_path);
+                clean_up(todo_file, todos, todo_count);
                 return EXIT_FAILURE;
             }
+            arg = argv[i];
+
             
             // Todo text will be everything from now on until the end
             size_t todo_text_length = 0;
@@ -140,19 +179,24 @@ int main(int argc, char** argv) {
             Todo* new_todo = todo_new(strlen(todo_text), todo_text);
             if (todo_write_end(todo_file, new_todo) == EXIT_FAILURE) {
                 fprintf(stderr, "[ERR] Failed to write a new todo: %s\n", strerror(errno));
-                clean_up(todo_file, todos, todo_count, todo_file_path);
+                clean_up(todo_file, todos, todo_count);
                 return EXIT_FAILURE;
             }
 
             printf("Added!\n");
             
-            clean_up(todo_file, todos, todo_count, todo_file_path);
+            clean_up(todo_file, todos, todo_count);
             return EXIT_SUCCESS;
         }
 
 
         // Show command
         if (strcmp(arg, "show") == 0) {
+            // Open|Create|Reopen TODO file
+            if (open_todo_file(todo_file_path, &todo_file) == EXIT_FAILURE) {
+                return EXIT_FAILURE;
+            }
+
             int result = todos_read(todo_file, &todos, &todo_count);
             if (result == EXIT_FAILURE && todo_count == 0) {
                 printf("No TODOs yet!\n");
@@ -172,13 +216,18 @@ int main(int argc, char** argv) {
                 printf("All is done!\n");
             }
             
-            clean_up(todo_file, todos, todo_count, todo_file_path);
+            clean_up(todo_file, todos, todo_count);
             return EXIT_SUCCESS;
         }
 
 
         // Show-done command
         if (strcmp(arg, "show-done") == 0) {
+            // Open|Create|Reopen TODO file
+            if (open_todo_file(todo_file_path, &todo_file) == EXIT_FAILURE) {
+                return EXIT_FAILURE;
+            }
+
             int result = todos_read(todo_file, &todos, &todo_count);
             if (result == EXIT_FAILURE && todo_count == 0) {
                 printf("No TODOs yet!\n");
@@ -198,13 +247,18 @@ int main(int argc, char** argv) {
                 printf("No TODOs were done yet!\n");
             }
             
-            clean_up(todo_file, todos, todo_count, todo_file_path);
+            clean_up(todo_file, todos, todo_count);
             return EXIT_SUCCESS;
         }
 
 
         // Done command
         if (strcmp(arg, "done") == 0) {
+            // Open|Create|Reopen TODO file
+            if (open_todo_file(todo_file_path, &todo_file) == EXIT_FAILURE) {
+                return EXIT_FAILURE;
+            }
+
             int result = todos_read(todo_file, &todos, &todo_count);
             if (result == EXIT_FAILURE && todo_count == 0) {
                 printf("No TODOs yet!\n");
@@ -214,7 +268,7 @@ int main(int argc, char** argv) {
             i++;            
             if (i >= argc) {
                 printf("Not one index was specified!\n");
-                clean_up(todo_file, todos, todo_count, todo_file_path);
+                clean_up(todo_file, todos, todo_count);
                 return EXIT_SUCCESS;
             }
             
@@ -241,11 +295,11 @@ int main(int argc, char** argv) {
             fseek(todo_file, 0, SEEK_SET);
             if (todos_write(todo_file, todos, todo_count) == EXIT_FAILURE) {
                 fprintf(stderr, "[ERR] Failed to write updated todos to a todo file: %s\n", strerror(errno));
-                clean_up(todo_file, todos, todo_count, todo_file_path);
+                clean_up(todo_file, todos, todo_count);
                 return EXIT_FAILURE;
             }
 
-            clean_up(todo_file, todos, todo_count, todo_file_path);
+            clean_up(todo_file, todos, todo_count);
             return EXIT_SUCCESS;
         }
     }
@@ -254,7 +308,7 @@ int main(int argc, char** argv) {
         "No valid sequence of commands was specified!\
         \nRun clido help to look at usage overview\n"
     );
-    clean_up(todo_file, todos, todo_count, todo_file_path);
+    clean_up(todo_file, todos, todo_count);
 
     return EXIT_FAILURE;
 }
