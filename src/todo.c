@@ -72,7 +72,7 @@ void todo_delete(Todo** todo) {
 
 
 /*
-Writes a provided todo to a file at current position in binary representation.
+Writes a provided todo to a file at the current position in binary representation.
 
 Returns EXIT_FAILURE if an error has occured. 
 */
@@ -82,9 +82,6 @@ int todo_write(FILE* file, const Todo* todo) {
     if (!file) {
         return EXIT_FAILURE;
     }
-
-    // Append to the end of the file
-    fseek(file, 0, SEEK_END);
     
     // Text length
     items_written = fwrite(&todo->text_len, sizeof(uint32_t), 1, file);
@@ -102,6 +99,50 @@ int todo_write(FILE* file, const Todo* todo) {
     items_written = fwrite(&todo->done, sizeof(uint8_t), 1, file);
     if (items_written != 1) {
         return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
+/*
+Writes a provided todo to a file at the end of the file in binary representation.
+
+Returns EXIT_FAILURE if an error has occured. 
+*/
+int todo_write_end(FILE* file, const Todo* todo) {
+    if (!file) {
+        return EXIT_FAILURE;
+    }
+
+    // Append to the end of the file
+    fseek(file, 0, SEEK_END);
+    
+    return todo_write(file, todo);
+}
+
+
+/*
+Writes given TODOs to file. File cursor isn't changed in any way.
+
+Returns EXIT_FAILURE in case of an error.
+*/
+int todos_write(FILE* file, Todo** todos, size_t todo_count) {
+    if (!file || !todos) {
+        return EXIT_FAILURE;
+    }
+    if (!(*todos)) {
+        return EXIT_FAILURE;
+    } 
+
+    for (size_t i = 0; i < todo_count; i++) {
+        if (!todos[i]) {
+            continue;
+        }
+
+        if (todo_write(file, todos[i]) == EXIT_FAILURE) {
+            return EXIT_FAILURE;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -182,7 +223,14 @@ int todos_read(FILE* file, Todo*** todos, size_t* todos_read) {
 }
 
 
-//TODO
-int todo_mark_done() {
-    return EXIT_SUCCESS;
+/*
+Marks todo as done
+*/
+void todo_mark_done(Todo* todo) {
+    if (!todo) {
+        return;
+    }
+
+    todo->done = 1;
+    return;
 }

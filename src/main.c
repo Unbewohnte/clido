@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
 
 
     // Collect and work out arguments
-    while (i < argc) {
+    while (i+1 < argc) {
         i++;
         arg = argv[i];
         
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
                 \nadd [todo] -> Writes a new TODO to a default TODO file\
                 \nshow -> Outputs current TODOs\
                 \nshow-done -> Outputs TODOs which were done previously\
-                \ndone [index OR index1-index2 OR index1,index2] -> Marks specified TODO(s) as done\
+                \ndone [index]... -> Marks specified TODO(s) as done\
                 \n"
             );
             clean_up(todo_file, todos, todo_count, todo_file_path);
@@ -138,7 +138,7 @@ int main(int argc, char** argv) {
             }
 
             Todo* new_todo = todo_new(strlen(todo_text), todo_text);
-            if (todo_write(todo_file, new_todo) == EXIT_FAILURE) {
+            if (todo_write_end(todo_file, new_todo) == EXIT_FAILURE) {
                 fprintf(stderr, "[ERR] Failed to write a new todo: %s\n", strerror(errno));
                 clean_up(todo_file, todos, todo_count, todo_file_path);
                 return EXIT_FAILURE;
@@ -159,11 +159,17 @@ int main(int argc, char** argv) {
                 return EXIT_SUCCESS;
             }
 
+            size_t printed = 0;
             for (size_t j = 0; j < todo_count; j++) {
                 if (todos[j]->done) {
                     continue;
                 }
                 printf("[%ld] %s\n", j, todos[j]->text);
+                printed++;
+            }
+
+            if (printed == 0) {
+                printf("All is done!\n");
             }
             
             clean_up(todo_file, todos, todo_count, todo_file_path);
@@ -197,7 +203,7 @@ int main(int argc, char** argv) {
         }
 
 
-        // Done command TODO!!!!!
+        // Done command
         if (strcmp(arg, "done") == 0) {
             int result = todos_read(todo_file, &todos, &todo_count);
             if (result == EXIT_FAILURE && todo_count == 0) {
@@ -207,20 +213,37 @@ int main(int argc, char** argv) {
 
             i++;            
             if (i >= argc) {
-                // Not one index was specified
-                // Mark the first one as DONE
-                
+                printf("Not one index was specified!\n");
+                clean_up(todo_file, todos, todo_count, todo_file_path);
+                return EXIT_SUCCESS;
             }
-            arg = argv[i];
-
-
+            
             for (size_t j = 0; j < todo_count; j++) {
                 if (todos[j]->done) {
                     continue;
                 }
-                printf("[%ld] %s\n", j, todos[j]->text);
+
+                for (size_t arg_index = i; arg_index < argc; arg_index++) {
+                    size_t index = (size_t) atoll(argv[arg_index]);
+                    if (index >= todo_count) {
+                        continue;
+                    }
+
+                    if (j == index) {
+                        // Mark as done
+                        todo_mark_done(todos[j]);
+                        printf("Marked \" %s\" as done!\n", todos[j]->text);
+                    }
+                }
             }
             
+            // Re-write TODO file (Truncation is no needed as only one bit has changed)
+            fseek(todo_file, 0, SEEK_SET);
+            if (todos_write(todo_file, todos, todo_count) == EXIT_FAILURE) {
+                fprintf(stderr, "[ERR] Failed to write updated todos to a todo file: %s\n", strerror(errno));
+                clean_up(todo_file, todos, todo_count, todo_file_path);
+                return EXIT_FAILURE;
+            }
 
             clean_up(todo_file, todos, todo_count, todo_file_path);
             return EXIT_SUCCESS;

@@ -39,12 +39,27 @@ void todo_delete(Todo** todo);
 
 
 /*
-Writes a provided todo to a file at current position in binary representation.
+Writes a provided todo to a file at the current position in binary representation.
 
 Returns EXIT_FAILURE if an error has occured. 
 */
 int todo_write(FILE* file, const Todo* todo);
 
+
+/*
+Writes a provided todo to a file at the end of the file in binary representation.
+
+Returns EXIT_FAILURE if an error has occured. 
+*/
+int todo_write_end(FILE* file, const Todo* todo);
+
+
+/*
+Writes given TODOs to file. File cursor isn't changed in any way.
+
+Returns EXIT_FAILURE in case of an error.
+*/
+int todos_write(FILE* file, Todo** todos, size_t todo_count);
 
 
 /*
@@ -66,5 +81,7 @@ Returns EXIT_FAILURE if an error occured somewhere.
 int todos_read(FILE* file, Todo*** todos, size_t* todos_read);
 
 
-//TODO
-int todo_mark_done();
+/*
+Marks todo as done
+*/
+void todo_mark_done(Todo* todo);

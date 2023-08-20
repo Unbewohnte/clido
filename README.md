@@ -24,7 +24,7 @@ Commands:
 - `add [todo]... -> Writes a new TODO to a default TODO file`
 - `show -> Outputs current TODOs`
 - `show-done -> Outputs TODOs which were done previously`
-- `done [index OR index1-index2 OR index1,index2] -> Marks specified TODO(s) as done`
+- `done [index]... -> Marks specified TODO(s) as done`
 
 
 ## License
