@@ -6,6 +6,10 @@ clean:
 
 install: all
 	mv clido /usr/local/bin
+	mkdir -p /usr/local/share/clido
+	touch /usr/local/share/clido/TODOS.bin
+	chmod -R a+rw /usr/local/share/clido
 
 delete:
-	rm -f /usr/local/bin/clido
+	rm -rf ~/.clido
+	sudo rm -rf /usr/local/bin/clido

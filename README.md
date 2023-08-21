@@ -14,6 +14,8 @@ Simply `make` or as simply compile .c files together
 If you're on Linux - `sudo make install` **or** `sudo ./install.sh` **or if not** simply move the binary to wherever you desire.
 
 
+On Windows clido will look for a todo file in the current directory, on other platforms it will be /usr/local/share/clido (which is created and configured automatically via `make install` or `install.sh`)
+
 ## Usage
 
 `clido [COMMAND]`

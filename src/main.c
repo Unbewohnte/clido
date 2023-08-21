@@ -26,14 +26,14 @@
 #include "todo.h"
 
 
-#define CLIDO_VERSION "0.1"
+#define CLIDO_VERSION "0.1.1"
 
 
 #ifdef _WIN32
 #define TODO_FILE_PATH "TODOS.bin"
 
 #else
-#define TODO_FILE_PATH "/usr/local/share/TODOS.bin"
+#define TODO_FILE_PATH "/usr/local/share/clido/TODOS.bin"
 
 #endif
 
